@@ -14,6 +14,8 @@ import com.project.campus.room.repository.*;
 import com.project.campus.user.model.User;
 import com.project.campus.user.model.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,19 +35,24 @@ public class EventService {
     @Transactional
     public EventResponse createEvent(EventRequest request) {
 
-        User user = userRepository.findById(request.getUserId())
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        String email = authentication.getName();
+
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         RequestedEvent event = new RequestedEvent();
+
         event.setEventName(request.getEventName());
         event.setPurpose(request.getPurpose());
-        event.setUser(user);
+        event.setUser(user);          // Logged-in user
         event.setStartTime(request.getStartTime());
         event.setEndTime(request.getEndTime());
         event.setStatus(RequestStatus.PENDING);
         event.setRemarks(request.getRemarks());
 
-        // Save event first
         RequestedEvent savedEvent = requestedEventRepository.save(event);
 
         // Save requested rooms
@@ -156,40 +163,54 @@ public class EventService {
     @Transactional
     public EventResponse updateEvent(Long id, EventRequest request) {
 
+        // Find event
         RequestedEvent event = requestedEventRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Event not found"));
 
-        // Only pending or rejected events can be updated
+        // Only Pending or Rejected events can be updated
         if (event.getStatus() != RequestStatus.PENDING &&
                 event.getStatus() != RequestStatus.REJECTED) {
 
             throw new RuntimeException("Only PENDING or REJECTED events can be updated.");
         }
 
-        User user = userRepository.findById(request.getUserId())
+        // Get logged-in user from JWT
+        Authentication authentication = SecurityContextHolder
+                .getContext()
+                .getAuthentication();
+
+        String email = authentication.getName();
+
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Security Check:
+        // Only the creator of the event can update it
+        if (!event.getUser().getId().equals(user.getId())) {
+            throw new RuntimeException("You are not allowed to update this event.");
+        }
 
         // Update event details
         event.setEventName(request.getEventName());
         event.setPurpose(request.getPurpose());
-        event.setUser(user);
         event.setStartTime(request.getStartTime());
         event.setEndTime(request.getEndTime());
         event.setRemarks(request.getRemarks());
 
-        // If rejected, send it back for approval
+        // If rejected, send it again for approval
         event.setStatus(RequestStatus.PENDING);
 
         RequestedEvent updatedEvent = requestedEventRepository.save(event);
 
-        // Delete old requested rooms
+        // Remove old requested rooms
         requestedRoomRepository.deleteByEventRequest(updatedEvent);
 
-        // Save new requested rooms
+        // Save newly selected rooms
         for (Long roomId : request.getRoomIds()) {
 
             Room room = roomRepository.findById(roomId)
-                    .orElseThrow(() -> new RuntimeException("Room not found: " + roomId));
+                    .orElseThrow(() ->
+                            new RuntimeException("Room not found: " + roomId));
 
             RequestedRoom requestedRoom = new RequestedRoom();
             requestedRoom.setEventRequest(updatedEvent);
@@ -198,7 +219,7 @@ public class EventService {
             requestedRoomRepository.save(requestedRoom);
         }
 
-        // Response
+        // Prepare response
         EventResponse response = new EventResponse();
         response.setId(updatedEvent.getId());
         response.setEventName(updatedEvent.getEventName());

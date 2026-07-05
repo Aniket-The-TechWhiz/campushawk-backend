@@ -7,6 +7,9 @@ import com.project.campus.user.model.Role;
 import com.project.campus.user.model.User;
 import com.project.campus.user.model.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -34,20 +37,24 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public AuthResponse login(@RequestBody AuthRequest request) {
+    public ResponseEntity<?> login(@RequestBody AuthRequest request) {
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            request.getEmail(),
+                            request.getPassword()
+                    )
+            );
 
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getEmail(),
-                        request.getPassword()
-                )
-        );
+            User user = userRepository.findByEmail(request.getEmail())
+                    .orElseThrow();
 
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow();
+            String token = jwtService.generateToken(user);
 
-        String token = jwtService.generateToken(user);
-
-        return new AuthResponse(token);
+            return ResponseEntity.ok(new AuthResponse(token));
+        } catch (AuthenticationException exception) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(java.util.Map.of("error", "Invalid email or password"));
+        }
     }
 }

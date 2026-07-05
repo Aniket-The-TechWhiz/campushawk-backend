@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Portal | Login</title>
+    <link rel="stylesheet" th:href="@{/css/login.css}" href="/css/login.css">
+</head>
+<body>
+    <main class="page-shell">
+        <section class="login-panel" aria-label="Login form section">
+            <div class="login-card">
+                <div class="card-header">
+                    <p class="eyebrow">Campus Portal</p>
+                    <h1>Log in</h1>
+                    <p class="subtitle">Enter your email and password to continue.</p>
+                </div>
+
+                <div id="formStatus" class="status-message" role="status" aria-live="polite"></div>
+
+                <form id="loginForm" class="login-form" novalidate>
+                    <label for="email">Email</label>
+                    <input id="email" type="email" placeholder="you@example.edu" autocomplete="email" required>
+
+                    <label for="password">Password</label>
+                    <input id="password" type="password" placeholder="Enter your password" autocomplete="current-password" required>
+
+                    <button id="submitButton" type="submit">Login</button>
+                </form>
+            </div>
+        </section>
+    </main>
+
+    <script th:src="@{/js/login.js}" src="/js/login.js"></script>
+</body>
+</html>

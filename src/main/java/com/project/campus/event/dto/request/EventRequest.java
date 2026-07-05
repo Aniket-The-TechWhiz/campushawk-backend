@@ -14,7 +14,7 @@ public class EventRequest {
 
     private String eventName;
     private String purpose;
-    private Long userId;
+    //private Long userId;
 
     private LocalDateTime startTime;
     private LocalDateTime endTime;
