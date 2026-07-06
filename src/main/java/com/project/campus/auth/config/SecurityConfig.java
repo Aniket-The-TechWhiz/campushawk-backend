@@ -54,6 +54,12 @@ public class SecurityConfig {
                         .requestMatchers("/bookroom/{id}/approve").hasAnyRole("HOD", "ADMIN", "SUPER_ADMIN")
                         .requestMatchers("/bookroom/{id}/reject").hasAnyRole("HOD", "ADMIN", "SUPER_ADMIN")
                         .requestMatchers("/bookroom/**").hasAnyRole("FACULTY", "HOD", "ADMIN", "SUPER_ADMIN")
+                        // Event Creation & Update
+                        .requestMatchers(HttpMethod.POST, "/event/**")
+                        .hasAnyRole("FACULTY", "HOD", "SUPER_ADMIN")
+
+                        .requestMatchers(HttpMethod.PUT, "/event/{id}")
+                        .hasAnyRole("FACULTY", "HOD", "SUPER_ADMIN")
                         // .requestMatchers("").hasRole("")
                         .anyRequest()
                         .authenticated()

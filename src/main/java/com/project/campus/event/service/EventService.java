@@ -4,6 +4,8 @@ import com.project.campus.event.dto.request.ApproveEventRequest;
 import com.project.campus.event.dto.request.EventRequest;
 import com.project.campus.event.dto.response.ApprovedEventResponse;
 import com.project.campus.event.dto.response.EventResponse;
+import com.project.campus.event.dto.response.FacultyEventResponse;
+import com.project.campus.event.dto.response.MyRequestedEventResponse;
 import com.project.campus.event.model.*;
 import com.project.campus.event.repository.AllocatedRoomRepository;
 import com.project.campus.event.repository.ApprovedEventRepository;
@@ -31,6 +33,7 @@ public class EventService {
     private final RoomRepository roomRepository;
     private final RequestedRoomRepository requestedRoomRepository;
     private final AllocatedRoomRepository allocatedRoomRepository;
+    private final DepartmentRepository departmentRepository;
 
     @Transactional
     public EventResponse createEvent(EventRequest request) {
@@ -42,12 +45,13 @@ public class EventService {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-
+        Department department=departmentRepository.findById(user.getDepartment().getId()).orElseThrow(() -> new RuntimeException("Department not found"));
         RequestedEvent event = new RequestedEvent();
 
         event.setEventName(request.getEventName());
         event.setPurpose(request.getPurpose());
-        event.setUser(user);          // Logged-in user
+        event.setUser(user);// Logged-in user
+        event.setDepartment(department);
         event.setStartTime(request.getStartTime());
         event.setEndTime(request.getEndTime());
         event.setStatus(RequestStatus.PENDING);
@@ -73,7 +77,8 @@ public class EventService {
         response.setId(savedEvent.getId());
         response.setEventName(savedEvent.getEventName());
         response.setPurpose(savedEvent.getPurpose());
-        response.setUserId(savedEvent.getUser().getId());
+        response.setUserName(savedEvent.getUser().getName());
+        response.setDepartmentName(savedEvent.getDepartment().getDepartmentName());
         response.setStartTime(savedEvent.getStartTime());
         response.setEndTime(savedEvent.getEndTime());
         response.setStatus(savedEvent.getStatus());
@@ -224,7 +229,8 @@ public class EventService {
         response.setId(updatedEvent.getId());
         response.setEventName(updatedEvent.getEventName());
         response.setPurpose(updatedEvent.getPurpose());
-        response.setUserId(updatedEvent.getUser().getId());
+        response.setUserName(updatedEvent.getUser().getName());
+        response.setDepartmentName(updatedEvent.getDepartment().getDepartmentName());
         response.setStartTime(updatedEvent.getStartTime());
         response.setEndTime(updatedEvent.getEndTime());
         response.setStatus(updatedEvent.getStatus());
@@ -276,6 +282,70 @@ public class EventService {
                     response.setEndDateTime(approvedEvent.getEndDateTime());
                     response.setRemark(requestedEvent.getRemarks());
                     response.setAllocatedRoomIds(allocatedRoomIds);
+
+                    return response;
+                })
+                .toList();
+    }
+
+
+    @Transactional
+    public List<FacultyEventResponse> getAllFacultyRequests() {
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        String email = authentication.getName();
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        Department department=departmentRepository.findById(user.getDepartment().getId()).orElseThrow(() -> new RuntimeException("Department not found"));
+
+        List<RequestedEvent> events=requestedEventRepository.findByDepartment(department);
+        return events.stream().map(event->{
+            FacultyEventResponse response=new FacultyEventResponse();
+            response.setFacultyName(event.getUser().getName());
+            response.setEventName(event.getEventName());
+            response.setEventPurpose(event.getPurpose());
+            response.setStartTime(event.getStartTime());
+            response.setEndTime(event.getEndTime());
+            response.setRoom(event.getRequestedRooms().stream().map(requestedRoom -> requestedRoom.getRoom().getRoomName()).toList());
+            response.setEventStatus(event.getStatus().name());
+            return response;
+        }).toList();
+
+
+    }
+
+    @Transactional(readOnly = true)
+    public List<MyRequestedEventResponse> getAllMyRequestedEvents() {
+
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        String email = authentication.getName();
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        List<RequestedEvent> events = requestedEventRepository.findByUser(user);
+
+        return events.stream()
+                .map(event -> {
+
+                    MyRequestedEventResponse response = new MyRequestedEventResponse();
+
+                    response.setEventName(event.getEventName());
+                    response.setStartTime(event.getStartTime());
+                    response.setEndTime(event.getEndTime());
+                    response.setStatus(event.getStatus().name());
+                    response.setRemark(event.getRemarks());
+
+                    response.setRoom(
+                            event.getRequestedRooms()
+                                    .stream()
+                                    .map(requestedRoom -> requestedRoom.getRoom().getRoomName()) // or getRoomNumber().toString()
+                                    .toList()
+                    );
 
                     return response;
                 })

@@ -4,6 +4,8 @@ import com.project.campus.event.dto.request.ApproveEventRequest;
 import com.project.campus.event.dto.request.EventRequest;
 import com.project.campus.event.dto.response.ApprovedEventResponse;
 import com.project.campus.event.dto.response.EventResponse;
+import com.project.campus.event.dto.response.FacultyEventResponse;
+import com.project.campus.event.dto.response.MyRequestedEventResponse;
 import com.project.campus.event.service.EventService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -62,5 +64,17 @@ public class EventController {
     @GetMapping("/approved")
     public ResponseEntity<List<ApprovedEventResponse>> getAllApprovedEvents() {
         return ResponseEntity.ok(eventService.getAllApprovedEvents());
+    }
+
+    //hod
+    @GetMapping("/facultyRequest")
+    public ResponseEntity<List<FacultyEventResponse>> getAllFacultyRequests(){
+        return ResponseEntity.ok(eventService.getAllFacultyRequests());
+    }
+
+    //all
+    @GetMapping("/myRequest")
+    public ResponseEntity<List<MyRequestedEventResponse>> getAllMyRequestedEvents(){
+        return  ResponseEntity.ok(eventService.getAllMyRequestedEvents());
     }
 }

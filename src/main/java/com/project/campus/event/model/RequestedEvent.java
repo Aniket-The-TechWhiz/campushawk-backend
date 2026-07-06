@@ -1,5 +1,6 @@
 package com.project.campus.event.model;
 
+import com.project.campus.room.model.Department;
 import com.project.campus.user.model.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -30,6 +31,10 @@ public class RequestedEvent {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "requested_by", nullable = false)
     private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "department_id", nullable = false)
+    private Department department;
 
     @Column(name = "start_datetime", nullable = false)
     private LocalDateTime startTime;
