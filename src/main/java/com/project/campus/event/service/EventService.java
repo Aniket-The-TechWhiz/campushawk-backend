@@ -2,10 +2,7 @@ package com.project.campus.event.service;
 
 import com.project.campus.event.dto.request.ApproveEventRequest;
 import com.project.campus.event.dto.request.EventRequest;
-import com.project.campus.event.dto.response.ApprovedEventResponse;
-import com.project.campus.event.dto.response.EventResponse;
-import com.project.campus.event.dto.response.FacultyEventResponse;
-import com.project.campus.event.dto.response.MyRequestedEventResponse;
+import com.project.campus.event.dto.response.*;
 import com.project.campus.event.model.*;
 import com.project.campus.event.repository.AllocatedRoomRepository;
 import com.project.campus.event.repository.ApprovedEventRepository;
@@ -13,6 +10,7 @@ import com.project.campus.event.repository.RequestedEventRepository;
 import com.project.campus.event.repository.RequestedRoomRepository;
 import com.project.campus.room.model.*;
 import com.project.campus.room.repository.*;
+import com.project.campus.user.model.Role;
 import com.project.campus.user.model.User;
 import com.project.campus.user.model.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -344,6 +342,37 @@ public class EventService {
                             event.getRequestedRooms()
                                     .stream()
                                     .map(requestedRoom -> requestedRoom.getRoom().getRoomName()) // or getRoomNumber().toString()
+                                    .toList()
+                    );
+
+                    return response;
+                })
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<HodRequestedEventResponse> getAllRequestedEventsByHod() {
+
+        List<RequestedEvent> events = requestedEventRepository.findByUserRole(Role.HOD);
+
+        return events.stream()
+                .map(event -> {
+
+                    HodRequestedEventResponse response = new HodRequestedEventResponse();
+
+                    response.setFacultyName(event.getUser().getName());
+                    response.setEventName(event.getEventName());
+                    response.setEventPurpose(event.getPurpose());
+                    response.setDepartmentName(event.getDepartment().getDepartmentName());
+                    response.setStartTime(event.getStartTime());
+                    response.setEndTime(event.getEndTime());
+                    response.setEventStatus(event.getStatus().name());
+                    response.setRemark(event.getRemarks());
+
+                    response.setRoom(
+                            event.getRequestedRooms()
+                                    .stream()
+                                    .map(requestedRoom -> requestedRoom.getRoom().getRoomName())
                                     .toList()
                     );
 

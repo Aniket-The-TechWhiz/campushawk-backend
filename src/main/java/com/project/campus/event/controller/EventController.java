@@ -2,10 +2,7 @@ package com.project.campus.event.controller;
 
 import com.project.campus.event.dto.request.ApproveEventRequest;
 import com.project.campus.event.dto.request.EventRequest;
-import com.project.campus.event.dto.response.ApprovedEventResponse;
-import com.project.campus.event.dto.response.EventResponse;
-import com.project.campus.event.dto.response.FacultyEventResponse;
-import com.project.campus.event.dto.response.MyRequestedEventResponse;
+import com.project.campus.event.dto.response.*;
 import com.project.campus.event.service.EventService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -77,4 +74,11 @@ public class EventController {
     public ResponseEntity<List<MyRequestedEventResponse>> getAllMyRequestedEvents(){
         return  ResponseEntity.ok(eventService.getAllMyRequestedEvents());
     }
+
+    //admin
+    @GetMapping("/hodRequest")
+    public ResponseEntity<List<HodRequestedEventResponse>> getAllRequestedEventsByHod(){
+        return ResponseEntity.ok(eventService.getAllRequestedEventsByHod());
+    }
+
 }
