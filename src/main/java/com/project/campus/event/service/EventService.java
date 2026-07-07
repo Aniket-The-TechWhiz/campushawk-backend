@@ -312,24 +312,27 @@ public class EventService {
 
                     RequestedEvent requestedEvent = approvedEvent.getEventRequest();
 
-                    List<Long> allocatedRoomIds = approvedEvent.getAllocatedRooms()
+                    List<AllocatedRoomResponse> rooms = approvedEvent.getAllocatedRooms()
                             .stream()
-                            .map(allocatedRoom -> allocatedRoom.getRoom().getRoomNumber())
+                            .map(room -> new AllocatedRoomResponse(
+                                    room.getRoom().getRoomNumber(),
+                                    room.getRoom().getRoomName()
+                            ))
                             .toList();
 
-                    ApprovedEventResponse response = new ApprovedEventResponse();
+                    return new ApprovedEventResponse(
+                            requestedEvent.getId(),
+                            requestedEvent.getEventName(),
+                            requestedEvent.getPurpose(),
+                            requestedEvent.getUser().getName(),
+                            approvedEvent.getApprovedBy().getName(),
+                            approvedEvent.getApprovedAt(),
+                            approvedEvent.getStartDateTime(),
+                            approvedEvent.getEndDateTime(),
+                            requestedEvent.getRemarks(),
+                            rooms
+                    );
 
-                    response.setId(approvedEvent.getId());
-                    response.setEventRequestId(requestedEvent.getId());
-                    response.setEventName(requestedEvent.getEventName());
-                    response.setEventPurpose(requestedEvent.getPurpose());
-                    response.setUserId(requestedEvent.getUser().getId());
-                    response.setStartDateTime(approvedEvent.getStartDateTime());
-                    response.setEndDateTime(approvedEvent.getEndDateTime());
-                    response.setRemark(requestedEvent.getRemarks());
-                    response.setAllocatedRoomIds(allocatedRoomIds);
-
-                    return response;
                 })
                 .toList();
     }

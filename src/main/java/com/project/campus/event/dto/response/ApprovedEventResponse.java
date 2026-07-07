@@ -1,6 +1,5 @@
 package com.project.campus.event.dto.response;
 
-import com.project.campus.event.model.RequestedEvent;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -12,13 +11,25 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ApprovedEventResponse {
-    private Long id;
+
     private Long eventRequestId;
+
     private String eventName;
+
     private String eventPurpose;
-    private Long userId;
+
+    private String requestedBy;
+
+    private String approvedBy;
+
+    private LocalDateTime approvedAt;
+
     private LocalDateTime startDateTime;
+
     private LocalDateTime endDateTime;
+
     private String remark;
-    private List<Long> allocatedRoomIds;
+
+    private List<AllocatedRoomResponse> allocatedRooms;
+
 }
