@@ -1,5 +1,6 @@
 package com.project.campus.room.model;
 
+import com.project.campus.department.Department;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;

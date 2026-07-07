@@ -2,9 +2,9 @@ package com.project.campus.room.service;
 
 import com.project.campus.room.dto.request.RoomRequest;
 import com.project.campus.room.dto.response.RoomResponse;
-import com.project.campus.room.model.Department;
+import com.project.campus.department.Department;
 import com.project.campus.room.model.Room;
-import com.project.campus.room.repository.DepartmentRepository;
+import com.project.campus.department.DepartmentRepository;
 import com.project.campus.room.repository.RoomRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

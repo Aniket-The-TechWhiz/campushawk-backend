@@ -1,4 +1,4 @@
-package com.project.campus.room.model;
+package com.project.campus.department;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

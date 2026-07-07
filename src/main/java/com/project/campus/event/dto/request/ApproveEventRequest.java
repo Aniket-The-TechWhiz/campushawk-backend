@@ -11,7 +11,5 @@ import java.util.List;
 @AllArgsConstructor
 public class ApproveEventRequest {
 
-    private Long approvedBy;
-
     private List<Long> allocatedRoomIds;
 }

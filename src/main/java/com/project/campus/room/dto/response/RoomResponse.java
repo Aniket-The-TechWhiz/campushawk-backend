@@ -1,6 +1,5 @@
 package com.project.campus.room.dto.response;
 
-import com.project.campus.room.model.Department;
 import com.project.campus.room.model.Floor;
 import lombok.AllArgsConstructor;
 import lombok.Data;

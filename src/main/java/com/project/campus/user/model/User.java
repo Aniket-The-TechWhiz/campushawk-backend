@@ -1,6 +1,6 @@
 package com.project.campus.user.model;
 
-import com.project.campus.room.model.Department;
+import com.project.campus.department.Department;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;

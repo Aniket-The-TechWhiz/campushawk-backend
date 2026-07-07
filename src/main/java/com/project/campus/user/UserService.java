@@ -1,7 +1,7 @@
 package com.project.campus.user;
 
-import com.project.campus.room.model.Department;
-import com.project.campus.room.repository.DepartmentRepository;
+import com.project.campus.department.Department;
+import com.project.campus.department.DepartmentRepository;
 import com.project.campus.user.dto.UserRequest;
 import com.project.campus.user.dto.UserResponse;
 import com.project.campus.user.model.User;

@@ -1,5 +1,7 @@
 package com.project.campus.event.service;
 
+import com.project.campus.department.Department;
+import com.project.campus.department.DepartmentRepository;
 import com.project.campus.event.dto.request.ApproveEventRequest;
 import com.project.campus.event.dto.request.EventRequest;
 import com.project.campus.event.dto.response.*;
@@ -8,6 +10,7 @@ import com.project.campus.event.repository.AllocatedRoomRepository;
 import com.project.campus.event.repository.ApprovedEventRepository;
 import com.project.campus.event.repository.RequestedEventRepository;
 import com.project.campus.event.repository.RequestedRoomRepository;
+import com.project.campus.room.dto.response.RequestedRoomResponse;
 import com.project.campus.room.model.*;
 import com.project.campus.room.repository.*;
 import com.project.campus.user.model.Role;
@@ -19,7 +22,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -34,8 +36,27 @@ public class EventService {
     private final AllocatedRoomRepository allocatedRoomRepository;
     private final DepartmentRepository departmentRepository;
 
+    private void validateEventDateTime(EventRequest request) {
+
+        if (request.getStartTime() == null || request.getEndTime() == null) {
+            throw new RuntimeException("Start time and End time are required.");
+        }
+
+        if (!request.getEndTime().isAfter(request.getStartTime())) {
+            throw new RuntimeException("End time must be after Start time.");
+        }
+
+        if (request.getStartTime().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Event start time cannot be in the past.");
+        }
+    }
+
+    //create
     @Transactional
     public EventResponse createEvent(EventRequest request) {
+
+        // ===== Validation =====
+        validateEventDateTime(request);
 
         Authentication authentication =
                 SecurityContextHolder.getContext().getAuthentication();
@@ -44,12 +65,16 @@ public class EventService {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        Department department=departmentRepository.findById(user.getDepartment().getId()).orElseThrow(() -> new RuntimeException("Department not found"));
+
+        Department department = departmentRepository
+                .findById(user.getDepartment().getId())
+                .orElseThrow(() -> new RuntimeException("Department not found"));
+
         RequestedEvent event = new RequestedEvent();
 
         event.setEventName(request.getEventName());
         event.setPurpose(request.getPurpose());
-        event.setUser(user);// Logged-in user
+        event.setUser(user);
         event.setDepartment(department);
         event.setStartTime(request.getStartTime());
         event.setEndTime(request.getEndTime());
@@ -71,7 +96,6 @@ public class EventService {
             requestedRoomRepository.save(requestedRoom);
         }
 
-        // Response
         EventResponse response = new EventResponse();
         response.setId(savedEvent.getId());
         response.setEventName(savedEvent.getEventName());
@@ -86,19 +110,35 @@ public class EventService {
         return response;
     }
 
+    // Approve Event
     @Transactional
-    public void approve(Long eventId, ApproveEventRequest request){
+    public void approve(Long eventId, ApproveEventRequest request) {
 
         RequestedEvent event = requestedEventRepository.findById(eventId)
                 .orElseThrow(() -> new RuntimeException("Event not found"));
 
-        User approver = userRepository.findById(request.getApprovedBy())
+        // Only pending events can be approved
+        if (event.getStatus() != RequestStatus.PENDING) {
+            throw new RuntimeException("Only pending events can be approved.");
+        }
+
+        // Event should not have already started
+        if (event.getStartTime().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Cannot approve an event that has already started.");
+        }
+
+        // Get logged-in approver from JWT
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        String email = authentication.getName();
+
+        User approver = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         event.setStatus(RequestStatus.APPROVED);
 
         ApprovedEvent approved = new ApprovedEvent();
-
         approved.setEventRequest(event);
         approved.setApprovedBy(approver);
         approved.setApprovedAt(LocalDateTime.now());
@@ -108,7 +148,7 @@ public class EventService {
 
         approved = approvedEventRepository.save(approved);
 
-        for(Long roomId : request.getAllocatedRoomIds()){
+        for (Long roomId : request.getAllocatedRoomIds()) {
 
             Room room = roomRepository.findById(roomId)
                     .orElseThrow(() -> new RuntimeException("Room not found"));
@@ -120,19 +160,21 @@ public class EventService {
                                     event.getEndTime(),
                                     event.getStartTime());
 
-            if(occupied){
-                throw new RuntimeException("Room " + roomId + " already allocated.");
+            if (occupied) {
+                throw new RuntimeException("Room " + roomId + " is already allocated.");
             }
 
             AllocatedRooms allocated = new AllocatedRooms();
-
             allocated.setApprovedEvent(approved);
             allocated.setRoom(room);
 
             allocatedRoomRepository.save(allocated);
         }
+
+        requestedEventRepository.save(event);
     }
 
+    //delete
     @Transactional
     public void deleteRequestedEvent(Long id) {
 
@@ -164,6 +206,7 @@ public class EventService {
         }
     }
 
+    //update
     @Transactional
     public EventResponse updateEvent(Long id, EventRequest request) {
 
@@ -188,11 +231,13 @@ public class EventService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Security Check:
         // Only the creator of the event can update it
         if (!event.getUser().getId().equals(user.getId())) {
             throw new RuntimeException("You are not allowed to update this event.");
         }
+
+        // Validate event date and time
+        validateEventDateTime(request);
 
         // Update event details
         event.setEventName(request.getEventName());
@@ -238,20 +283,22 @@ public class EventService {
         return response;
     }
 
+    //cancel approved event
     @Transactional
-    public void cancelApprovedEvent(Long approvedEventId) {
+    public void cancelApprovedEvent(Long eventRequestId) {
 
-        ApprovedEvent approvedEvent = approvedEventRepository.findById(approvedEventId)
+        ApprovedEvent approvedEvent = approvedEventRepository
+                .findByEventRequestId(eventRequestId)
                 .orElseThrow(() -> new RuntimeException("Approved event not found"));
 
-        // Update original request status (optional)
         RequestedEvent requestedEvent = approvedEvent.getEventRequest();
+
         requestedEvent.setStatus(RequestStatus.CANCELLED);
 
-        // Delete all allocated rooms
+        requestedEventRepository.save(requestedEvent);
+
         allocatedRoomRepository.deleteByApprovedEvent(approvedEvent);
 
-        // Delete approved event
         approvedEventRepository.delete(approvedEvent);
     }
 
@@ -288,31 +335,56 @@ public class EventService {
     }
 
 
-    @Transactional
+    @Transactional(readOnly = true)
     public List<FacultyEventResponse> getAllFacultyRequests() {
+
         Authentication authentication =
                 SecurityContextHolder.getContext().getAuthentication();
 
         String email = authentication.getName();
 
-        User user = userRepository.findByEmail(email)
+        User hod = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        Department department=departmentRepository.findById(user.getDepartment().getId()).orElseThrow(() -> new RuntimeException("Department not found"));
 
-        List<RequestedEvent> events=requestedEventRepository.findByDepartment(department);
-        return events.stream().map(event->{
-            FacultyEventResponse response=new FacultyEventResponse();
-            response.setFacultyName(event.getUser().getName());
-            response.setEventName(event.getEventName());
-            response.setEventPurpose(event.getPurpose());
-            response.setStartTime(event.getStartTime());
-            response.setEndTime(event.getEndTime());
-            response.setRoom(event.getRequestedRooms().stream().map(requestedRoom -> requestedRoom.getRoom().getRoomName()).toList());
-            response.setEventStatus(event.getStatus().name());
-            return response;
-        }).toList();
+        Department department = departmentRepository
+                .findById(hod.getDepartment().getId())
+                .orElseThrow(() -> new RuntimeException("Department not found"));
 
+        // Only faculty requests of this department
+        List<RequestedEvent> events =
+                requestedEventRepository.findByDepartmentAndUserRole(
+                        department,
+                        Role.FACULTY
+                );
 
+        return events.stream()
+                .map(event -> {
+
+                    FacultyEventResponse response = new FacultyEventResponse();
+
+                    response.setEventId(event.getId());
+                    response.setFacultyName(event.getUser().getName());
+                    response.setEventName(event.getEventName());
+                    response.setEventPurpose(event.getPurpose());
+                    response.setStartTime(event.getStartTime());
+                    response.setEndTime(event.getEndTime());
+                    response.setEventStatus(event.getStatus().name());
+
+                    response.setRooms(
+                            event.getRequestedRooms()
+                                    .stream()
+                                    .map(requestedRoom ->
+                                            new RequestedRoomResponse(
+                                                    requestedRoom.getRoom().getRoomNumber(),
+                                                    requestedRoom.getRoom().getRoomName()
+                                            )
+                                    )
+                                    .toList()
+                    );
+
+                    return response;
+                })
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -333,16 +405,23 @@ public class EventService {
 
                     MyRequestedEventResponse response = new MyRequestedEventResponse();
 
+                    response.setEventId(event.getId());
                     response.setEventName(event.getEventName());
+                    response.setEventPurpose(event.getPurpose());
                     response.setStartTime(event.getStartTime());
                     response.setEndTime(event.getEndTime());
                     response.setStatus(event.getStatus().name());
                     response.setRemark(event.getRemarks());
 
-                    response.setRoom(
+                    response.setRooms(
                             event.getRequestedRooms()
                                     .stream()
-                                    .map(requestedRoom -> requestedRoom.getRoom().getRoomName()) // or getRoomNumber().toString()
+                                    .map(requestedRoom ->
+                                            new RequestedRoomResponse(
+                                                    requestedRoom.getRoom().getRoomNumber(),
+                                                    requestedRoom.getRoom().getRoomName()
+                                            )
+                                    )
                                     .toList()
                     );
 
@@ -361,6 +440,7 @@ public class EventService {
 
                     HodRequestedEventResponse response = new HodRequestedEventResponse();
 
+                    response.setEventId(event.getId());
                     response.setFacultyName(event.getUser().getName());
                     response.setEventName(event.getEventName());
                     response.setEventPurpose(event.getPurpose());
@@ -370,10 +450,15 @@ public class EventService {
                     response.setEventStatus(event.getStatus().name());
                     response.setRemark(event.getRemarks());
 
-                    response.setRoom(
+                    response.setRooms(
                             event.getRequestedRooms()
                                     .stream()
-                                    .map(requestedRoom -> requestedRoom.getRoom().getRoomName())
+                                    .map(requestedRoom ->
+                                            new RequestedRoomResponse(
+                                                    requestedRoom.getRoom().getRoomNumber(),
+                                                    requestedRoom.getRoom().getRoomName()
+                                            )
+                                    )
                                     .toList()
                     );
 
