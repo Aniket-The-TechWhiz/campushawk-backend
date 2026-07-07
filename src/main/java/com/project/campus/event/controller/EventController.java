@@ -81,4 +81,6 @@ public class EventController {
         return ResponseEntity.ok(eventService.getAllRequestedEventsByHod());
     }
 
+
+
 }
